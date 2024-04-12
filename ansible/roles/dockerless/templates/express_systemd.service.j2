@@ -1,0 +1,19 @@
+[Unit]
+Description={{ artifacts_name }}
+Documentation={{ artifacts_name }}
+After=syslog.target
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/systemd/system/{{ artifacts_name }}.env
+WorkingDirectory={{ app_dir }}/{{ artifacts_name }}/dist
+ExecStart=/usr/bin/node app/index $CONSUL_HOST $CONSUL_HOST_PUV2
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ artifacts_name }}
+User={{ app_user }}
+Group={{ app_user }}
+
+[Install]
+WantedBy=multi-user.target

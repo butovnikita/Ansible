@@ -1,0 +1,19 @@
+{% if inventory_hostname in groups["express_releaser"] %}
+DB_HOST={{ app_db }}
+DB_PORT={{ psql_port }}
+DB_USER={{ psql_db_user }}
+DB_PASSWORD={{ psql_db_pass }}
+DB_NAME={{ psql_db_name }}
+JWT_SECRET=test_secret
+REDIS_HOST={{ redis_host }}
+REDIS_PORT={{ redis_port }}
+REDIS_PASSWORD={{ redis_password }}
+GITLAB_GROUP_ID={{ gitlab_group_id }}
+GITLAB_API_TOKEN={{ gitlab_api_token }}
+GITLAB_ADDRESS={{ gitlab_address }}
+JIRA_ADDRESS={{ jira_address }}
+{% else %}
+CONSUL_HOST={{ consul_host }}
+CONSUL_HOST_PUV2={{ consul_host_puv2 }}
+APP_SERVER={{ ansible_default_ipv4.address }}
+{% endif %}

@@ -1,0 +1,34 @@
+---
+
+- name: Archive dir
+  archive:
+    path: "{{ dir_source_path }}/*"
+    dest: "/dir_source.tgz"
+  delegate_to: localhost
+
+- name: Copy archive
+  copy:
+    src: "/dir_source.tgz"
+    dest: "{{ tmp_dir }}"
+    force: true
+
+- name: Delete destination dir
+  file:
+    path: "{{ config_dir }}/{{ dir_dest_path }}"
+    state: absent
+
+- name: Create destination dir
+  file:
+    path: "{{ config_dir }}/{{ dir_dest_path }}"
+    state: directory
+
+- name: Extract archive to destination dir
+  unarchive:
+    src: "{{ tmp_dir }}/dir_source.tgz"
+    dest: "{{ config_dir }}/{{ dir_dest_path }}"
+    remote_src: yes
+
+- name: Delete archive
+  file:
+    path: "{{ tmp_dir }}/dir_source.tgz"
+    state: absent

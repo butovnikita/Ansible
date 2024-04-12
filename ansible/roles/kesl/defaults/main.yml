@@ -1,0 +1,7 @@
+---
+
+current_ts: "{{ ansible_date_time.epoch }}"
+
+kesl_root_dir: "{{ config_dir }}/kesl_checks"
+kesl_temp_dir: "{{ kesl_root_dir }}/tmp"
+kesl_project_dir: "{{ kesl_root_dir }}/{{ current_ts }}"

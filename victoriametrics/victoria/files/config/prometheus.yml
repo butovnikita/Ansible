@@ -1,0 +1,279 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: 'vmagent'
+    static_configs:
+      - targets: ['vmagent:8429']
+
+  - job_name: 'vmalert'
+    static_configs:
+      - targets: ['vmalert:8880']
+
+  - job_name: 'victoriametrics'
+    static_configs:
+      - targets: ['victoriametrics:8428']
+
+  - job_name: 'gitlab-ci'
+    static_configs:
+      - targets: ['dpr-gitlab.otr.ru:8080']
+
+  - job_name: dev-nodes
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-dev-int-consul.otr.ru:8500
+        scheme: http
+        tags: [dev]
+        services: [node_exporter]
+
+  - job_name: test-nodes
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-test-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test]
+        services: [node_exporter]
+
+  - job_name: test2-nodes
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-test2-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test2]
+        services: [node_exporter]
+
+  - job_name: qa-nodes
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-qa-int-consul-01.otr.ru:8500
+        scheme: http
+        tags: [qa]
+        services: [node_exporter]
+
+  - job_name: qa-jmx
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-qa-int-consul-01.otr.ru:8500
+        scheme: http
+        tags: [qa]
+        services: [health_check]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __address__
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - source_labels: [__address__]
+        separator: ":"
+        regex: "(.*):(.*)"
+        replacement: "${1}:8888"
+        target_label: __address__
+
+  - job_name: dev-postgres
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-dev-int-consul.otr.ru:8500
+        scheme: http
+        tags: [dev]
+        services: [postgres_exporter]
+
+  - job_name: test-postgres
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-test-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test]
+        services: [postgres_exporter]
+
+  - job_name: test2-postgres
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-test2-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test2]
+        services: [postgres_exporter]
+
+  - job_name: qa-postgres
+    metrics_path: /metrics
+    consul_sd_configs:
+      - server: puv-qa-int-consul-01.otr.ru:8500
+        scheme: http
+        tags: [qa]
+        services: [postgres_exporter]
+
+  - job_name: dev-health_check
+    metrics_path: /probe
+    params:
+      module: [health_check]
+    consul_sd_configs:
+      - server: puv-dev-int-consul.otr.ru:8500
+        scheme: http
+        tags: [dev]
+        services: [health_check]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __param_target
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - target_label: __address__
+        replacement: puv-dev-monitoring.otr.ru:9115
+
+  - job_name: test-health_check
+    metrics_path: /probe
+    params:
+      module: [health_check]
+    consul_sd_configs:
+      - server: puv-test-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test]
+        services: [health_check]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __param_target
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - target_label: __address__
+        replacement: puv-dev-monitoring.otr.ru:9115
+
+  - job_name: test2-health_check
+    metrics_path: /probe
+    params:
+      module: [health_check]
+    consul_sd_configs:
+      - server: puv-test2-int-consul.otr.ru:8500
+        scheme: http
+        tags: [test2]
+        services: [health_check]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __param_target
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - target_label: __address__
+        replacement: puv-dev-monitoring.otr.ru:9115
+
+  - job_name: qa-health_check
+    metrics_path: /probe
+    params:
+      module: [health_check]
+    consul_sd_configs:
+      - server: puv-qa-int-consul-01.otr.ru:8500
+        scheme: http
+        tags: [qa]
+        services: [health_check]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __param_target
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - target_label: __address__
+        replacement: puv-dev-monitoring.otr.ru:9115
+
+  - job_name: qa-ufos_check
+    metrics_path: /probe
+    params:
+      module: [ufos_check]
+    consul_sd_configs:
+      - server: puv-qa-int-consul-01.otr.ru:8500
+        scheme: http
+        tags: [qa]
+        services: [http_200]
+    relabel_configs:
+      - source_labels: [__meta_consul_service_address]
+        target_label: __param_target
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+      - target_label: __address__
+        replacement: puv-dev-monitoring.otr.ru:9115
+
+  - job_name: dev-int-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-dev-int-kafka.otr.ru:9308']
+
+  - job_name: dev-ext-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-dev-ext-integr.otr.ru:9308']
+
+  - job_name: test-ext-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-test-ext-integr.otr.ru:9308']
+
+  - job_name: test-int-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-test-int-kafka.otr.ru:9308']
+
+  - job_name: test2-ext-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-test2-ext-kafka.otr.ru:9308']
+
+  - job_name: test2-int-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-test2-int-kafka.otr.ru:9308']
+
+  - job_name: qa-ext-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-qa-ext-integr-01.otr.ru:9308']
+  - job_name: qa-ext-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-qa-ext-integr-01.otr.ru:9308']
+
+  - job_name: qa-int-kafka
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['puv-qa-int-kafka-server-01.otr.ru:9308','puv-qa-int-kafka-server-02.otr.ru:9308','puv-qa-int-kafka-server-03.otr.ru:9308']
+
+  - job_name: qa-nginx
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+        - puv-qa-ext-elk-01.otr.ru:9113
+        - puv-qa-ext-integr-01.otr.ru:9113
+        - puv-qa-int-proxy-01.otr.ru:9113
+        - puv-qa-int-proxy-02.otr.ru:9113
+        - puv-qa-int-assign-proxy-01.otr.ru:9113
+        - puv-qa-int-assign-proxy-02.otr.ru:9113
+        - puv-qa-int-assign-proxy-11.otr.ru:9113
+        - puv-qa-int-reg-proxy-01.otr.ru:9113
+        - puv-qa-int-reg-proxy-02.otr.ru:9113
+        - puv-qa-int-reg-proxy-11.otr.ru:9113
+        - puv-qa-int-kzs-proxy-01.otr.ru:9113
+        - puv-qa-int-kzs-proxy-02.otr.ru:9113
+        - puv-qa-int-kzs-proxy-12.otr.ru:9113
+
+  - job_name: qa-consul
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+        - puv-qa-int-consul-01.otr.ru:9107
+        - puv-qa-int-consul-11.otr.ru:9107
+
+  - job_name: qa-redis
+     scrape_interval: 5s
+     metrics_path: '/metrics'
+     static_configs:
+       - targets: ['puv-qa-int-payment-app-01.otr.ru:9100']
+
+  - job_name: acc_test2
+    scrape_interval: 5s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['puv-test2-int-assign-app-01.otr.ru:18083']
+
+  - job_name: acc_test2_puv2
+    scrape_interval: 5s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['puv-test2-int-assign-app-01-v2.otr.ru:18083']
+
+  - job_name: acc_prom-stage
+    scrape_interval: 5s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['puv-prom-stage-int-assign-app-01.otr.ru:18083']

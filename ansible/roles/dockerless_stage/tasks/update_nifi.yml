@@ -1,0 +1,13 @@
+---
+
+- name: Update Nifi | Copy new nar files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ app_dir }}/nifi-current/lib/"
+  with_fileglob:
+    - "{{ path_to_artifacts }}/nifi-puv-integration-nar-*.nar"
+
+- name: Update Nifi | Copy flow-files
+  copy:
+    src: "/builds/puv/int-integr/nifi-flows"
+    dest: "{{ app_dir }}"

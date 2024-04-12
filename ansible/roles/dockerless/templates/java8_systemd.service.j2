@@ -1,0 +1,18 @@
+[Unit]
+Description={{ artifacts_name_2 }}
+
+[Service]
+EnvironmentFile=/etc/systemd/system/{{ artifacts_name_2 }}.env
+WorkingDirectory={{ ufos_app_dir }}
+ExecStart=/bin/bash {{ ufos_app_dir }}/sufd.sh
+ExecStartPost=/usr/bin/curl -X PUT -d '{"id":"{{ inventory_hostname }}_{{ artifacts_name_2 }}","name":"ufos_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port_2 }}","tags":["ufos_check","{{ var_env }}"]}' http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+ExecStop=/usr/bin/curl --request PUT http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/deregister/{{ inventory_hostname }}_{{ artifacts_name_2 }}
+User={{ ufos_user }}
+Type=simple
+Restart=on-failure
+RestartSec=10
+LimitNPROC=16384
+LimitNOFILE=262144
+
+[Install]
+WantedBy=multi-user.target

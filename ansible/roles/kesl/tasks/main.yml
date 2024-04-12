@@ -1,0 +1,47 @@
+---
+
+- name: Run kesl checks
+  block:
+    - name: Create base dirs
+      file:
+        state: directory
+        path: "{{ item }}"
+      loop:
+        - "{{ kesl_root_dir }}"
+        - "{{ kesl_temp_dir }}"
+        - "{{ kesl_project_dir }}"
+
+    - name: Create artifacts archive
+      shell: "tar -cvf /{{ current_ts }}.tar {{ path_to_artifacts }}"
+      delegate_to: localhost
+
+    - name: Copy artifacts archive
+      copy:
+        src: "/{{ current_ts }}.tar"
+        dest: "{{ kesl_temp_dir }}"
+        force: true
+
+    - name: Extract artifacts archive
+      unarchive:
+        src: "{{ kesl_temp_dir }}/{{ current_ts }}.tar"
+        dest: "{{ kesl_project_dir }}"
+        remote_src: yes
+
+    - name: Run scan-file
+      shell: "kesl-control --scan-file ."
+      args:
+        chdir: "{{ kesl_project_dir }}"
+      register: kesl_scan_file_result
+      failed_when:
+        # kesl-control отдает 0, если нет infected objects
+        - kesl_scan_file_result.rc != 0
+        # Но, для надежности, проверка наличия соответствующей надписи в stdout:
+        - '"Infected objects and other objects  : 0" not in kesl_scan_file_result.stdout'
+  always:
+    - name: Delete temp files
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ kesl_temp_dir }}/{{ current_ts }}.tar"
+        - "{{ kesl_project_dir }}"

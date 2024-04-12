@@ -1,0 +1,118 @@
+---
+
+# Создаем пользователя
+- name: Update Java 11 | Create app_user group
+  group:
+    name: "{{ app_user }}"
+    state: present
+
+- name: Update Java 11 | Create app_user
+  user:
+    name: "{{ app_user }}"
+    comment: APP user
+    group: "{{ app_user }}"
+
+# Создаем рабочую директорию
+- name: Update Java 11 | Create app_dir
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "755"
+  with_items:
+    - "{{ app_dir }}"
+    - "/app"
+
+# Ищем сервис
+- name: Update Java 11 | Find service
+  stat:
+    path: "/etc/systemd/system/{{ artifacts_name }}.service"
+  register: service_exists
+
+# Останавливаем сервис явы
+- name: Update Java 11 | Stop java 11 unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: stopped
+  when: service_exists.stat.exists
+
+# Создаем сервис
+- name: Update Java 11 | Copy unit first
+  template:
+    src: "java11_systemd.service.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.service"
+  when: artifacts_name is defined
+
+# Копируем env файл
+- name: Update Java 11 | Copy env app file first
+  template:
+    src: "java11_systemd.env.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.env"
+  when: artifacts_name is defined
+
+# Удаляем старый артефакт
+
+- name: Update Java 11 | Find old artifact
+  find:
+    paths: "{{ app_dir }}"
+    patterns: "*.jar"
+  register: files_to_delete
+
+- name: Update Java 11 | Delete old artifact
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ files_to_delete.files }}"
+
+# Получаем имя нашего артефакта
+- name: Update Java 11 | Get a list of file
+  shell: "ls *.jar"
+  args:
+    chdir: "{{ path_to_artifacts }}"
+  changed_when: false
+  register: results
+  delegate_to: localhost
+
+# Копируем новый артефакт
+- name: Update Java 11 | Copy new artifact
+  copy:
+    src: "{{ path_to_artifacts }}/{{ item }}"
+    dest: "{{ app_dir }}/{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  with_items: "{{ results.stdout_lines }}"
+
+# Создаем ссылку на артефакт
+- name: Update Java 11 | Create symbolic link
+  file:
+    src: "{{ app_dir }}/{{ item }}"
+    dest: "{{ app_dir }}/{{ artifacts_name }}.jar"
+    state: link
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  with_items: "{{ results.stdout_lines }}"
+
+# Настраиваем мониторинг java - jmx_prometheus_javaagent
+- name: Update Java 11 | Move jmx_exporter into place.
+  copy:
+    src: jmx_prometheus_javaagent-0.15.0.jar
+    dest: "{{ app_dir }}/jmx_prometheus_javaagent-0.15.0.jar"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+
+- name: Update Java 11 | Copy the jmx_exporter config file.
+  template:
+    src: jmx_config.yaml.j2
+    dest: "{{ app_dir }}/config.yaml"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+
+# Запускаем сервис
+- name: Update Java 11 | Start java 11 unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes

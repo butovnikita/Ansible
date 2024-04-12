@@ -1,0 +1,24 @@
+---
+
+# Проверить, что всё успешно выполнилось можно командой:
+# ldd -v /opt/nifi/ibm-mq/libmqjbnd.so | grep -i mqe
+# Надо будет добавить это в проверку, в случае ошибки будет "not found"
+- name: Misc | Script for update library
+  shell: "docker exec {{ deploy_name }} sudo -u root ldconfig"
+  delegate_to: "{{ inventory_hostname }}"
+  tags:
+    - nifi
+
+- name: Misc | NiFi cluster. Waiting for election to complete
+  pause:
+    minutes: 6
+  when: nifi_type == "async"
+  tags:
+    - nifi
+
+- name: Misc | Script for init nifi
+  shell: "docker exec {{ deploy_name }} /opt/nifi/puv-integration-flows/init_nifi.sh -t /opt/nifi/nifi-toolkit-current --nifi-url {{ nifi_url }} --registry-url {{ nifi_registry_url }} {{ nifi_init_nifi_sh_args | default('') }}"
+  delegate_to: "{{ inventory_hostname }}"
+  when: is_primary_node == "true"
+  tags:
+    - nifi

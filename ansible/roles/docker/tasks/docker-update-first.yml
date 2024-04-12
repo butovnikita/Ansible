@@ -1,0 +1,81 @@
+---
+
+# Отключаем мониторинг.
+- name: Prometheus | Derigester consul
+  uri:
+    url: "http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/deregister/{{ inventory_hostname }}_{{ deploy_name }}"
+    method: PUT
+
+# Останавливаем контейнер.
+- name: Docker Update | Stop a container
+  docker_container:
+    name: "{{ deploy_name }}"
+    state: stopped
+    timeout: 600
+  ignore_errors: yes
+
+# Удаляем контейнер.
+- name: Docker Update | Delete a container
+  docker_container:
+    name: "{{ deploy_name }}"
+    state: absent
+    timeout: 600
+  ignore_errors: yes
+
+# Создаём файл с переменными
+- name: Docker Env | Configure env file
+  template:
+    src: "env.j2"
+    dest: "{{ app_dir }}/.env"
+
+#  Копируем папку с сертификатами для фронтенда
+- name: Configure | Copy certs to {{ app_dir }}/ssl
+  copy:
+    src: "ssl"
+    dest: "{{ app_dir }}"
+    owner: root
+    group: root
+    mode: "644"
+  when: inventory_hostname in groups['app_elk']
+
+- name: Configure | Create conf.d dir
+  file:
+    path: "{{ app_dir }}/conf.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "644"
+
+#  Копируем конфиг для фронтенда
+- name: Configure | Copy config to {{ app_dir }}/conf.d
+  copy:
+    src: "/builds/puv/puv-pages/config/{{ front_nginx_config }}"
+    dest: "{{ app_dir }}/conf.d/{{ front_nginx_config }}"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['app_elk']
+
+# Создаём контейнер заново.
+- name: Docker Update | Update a container
+  docker_container:
+    name: "{{ deploy_name }}"
+    image: "{{ deploy_image }}"
+    ports: "{{ deploy_ports }}"
+    exposed_ports: "{{ deploy_exposed_ports }}"
+    volumes: "{{ deploy_volumes }}"
+    env_file: "{{ app_dir }}/.env"
+    etc_hosts: >
+      {
+        "{{ elk_host_name }}": "{{ elk_host_ip }}"
+      }
+    restart_policy: always
+    state: started
+    timeout: 600
+
+# Включаем мониторинг.
+- name: Prometheus | Register consul
+  uri:
+    url: http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+    method: PUT
+    body: {"id":"{{ inventory_hostname }}_{{ deploy_name }}","name":"health_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port }}/actuator/health","tags":["health_check","{{ var_env }}"]}
+    body_format: json

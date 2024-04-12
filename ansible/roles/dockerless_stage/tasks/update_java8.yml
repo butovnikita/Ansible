@@ -1,0 +1,65 @@
+---
+
+# Останавливаем сервис
+- name: Update Java 8 | Stop java 8 unit
+  systemd:
+    name: "{{ service_name }}"
+    enabled: yes
+    state: stopped
+
+# Создаем сервис
+- name: Update Java 8 | Copy unit
+  template:
+    src: "java8_systemd.service.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_2 }}.service"
+
+# Копируем env файл
+- name: Update Java 8 | Copy env app file
+  template:
+    src: "java8_systemd.env.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_2 }}.env"
+
+# Архивируем артефакты
+- archive:
+    path: "{{ path_to_artifacts }}"
+    dest: "/artifacts.tgz"
+  delegate_to: localhost
+
+# Копируем архив артефактов
+- name: Update Java 8 | Copy new artifact
+  copy:
+    src: "/artifacts.tgz"
+    dest: "{{ app_dir }}"
+    force: true
+- name: Update Java 8 | Create app dir
+  file:
+    path: "{{ app_dir }}/docker/source/sufd/jetty"
+    state: directory
+
+- name: Update Java 8 | Create link for jetty
+  file:
+    src: "{{ app_dir }}/docker/source/sufd/jetty"
+    dest: /usr/share/jetty
+    state: link
+
+# Разархивируем артефакты
+- name: Update Java 8 | Unarchived
+  unarchive:
+    src: "{{ app_dir }}/artifacts.tgz"
+    dest: "{{ app_dir }}/docker/source/"
+    remote_src: yes
+
+# Меняем порт для приложения
+- name: Update Java 8 | Edited config
+  lineinfile:
+    path: "/usr/share/jetty/etc/jetty.properties"
+    state: present
+    regexp: '^sufd\.bind\.port'
+    line: sufd.bind.port={{sufd_bind_port|default(18081)}}
+
+# Запускаем сервис
+- name: Update Java 8 | Start java 8 unit
+  systemd:
+    name: "{{ service_name}}"
+    enabled: yes
+    state: started

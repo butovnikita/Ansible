@@ -1,0 +1,54 @@
+---
+
+# Ищем сервис
+- name: Update Java 11 | Find service
+  stat:
+    path: "/etc/systemd/system/{{ artifacts_name_4 }}.service"
+  register: service_exists
+
+# Останавливаем сервис явы
+- name: Update Java 11 | Stop java 11 unit
+  systemd:
+    name: "{{ artifacts_name_4 }}"
+    enabled: yes
+    state: stopped
+  when: service_exists.stat.exists
+
+# Создаем сервис
+- name: Update Java 11 | Copy unit fourth
+  template:
+    src: "java11_systemd.service_4.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_4 }}.service"
+
+# Копируем env файл
+- name: Update Java 11 | Copy env app file fourth
+  template:
+    src: "java11_systemd.env_4.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_4 }}.env"
+
+# Удаляем старый артефакт
+- name: Update Java 11 | Delete old artifact
+  file:
+    path: "{{ app_dir }}/{{ artifacts_name_4 }}.jar"
+    state: absent
+
+# Получаем имя нашего артефакта
+- name: Update Java 11 | Get a list of file
+  shell: "ls {{ path_to_artifacts }}/*.jar"
+  changed_when: false
+  register: results
+  delegate_to: localhost
+
+# Копируем новый артефакт
+- name: Update Java 11 | Copy new artifact
+  copy:
+    src: "{{ item }}"
+    dest: "{{ app_dir }}/{{ artifacts_name_4 }}.jar"
+  with_items: "{{ results.stdout_lines }}"
+
+# Запускаем сервис
+- name: Update Java 11 | Start java 11 unit
+  systemd:
+    name: "{{ artifacts_name_4 }}"
+    enabled: yes
+    state: started

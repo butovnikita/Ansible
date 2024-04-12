@@ -1,0 +1,53 @@
+---
+
+# Архивируем артефакты
+- archive:
+    path: "{{ path_to_artifacts }}"
+    dest: "/artifacts.tgz"
+  delegate_to: localhost
+
+# Копируем архив артефактов
+- name: Update Front  | Copy new artifact
+  copy:
+    src: "/artifacts.tgz"
+    dest: "/tmp"
+    force: true
+
+# Разархивируем артефакты
+- name: Update Front  | Unarchived
+  unarchive:
+    src: "/tmp/artifacts.tgz"
+    dest: "/tmp/"
+    remote_src: yes
+
+# Удаляем всё сатрое, для фронта - это важно, чтобы всё было нормально
+# Даёт возможность нормально дебажить
+- name: Update Front | Delete app
+  file:
+    path: "{{ app_dir }}"
+    state: absent
+
+# Копируем новые файлы
+- name: Update Front  | Copy new files
+  copy:
+    src: "/tmp/dist/"
+    dest: "{{ app_dir }}"
+    remote_src: yes
+
+# Удаляем временные файлы
+- name: Update Front | Delete tmp
+  file:
+    path: "/tmp/dist/"
+    state: absent
+
+# Копируем файл с конфигом
+- name: Update Front | Copy nginx config
+  copy:
+    src: /builds/puv/puv-pages/config/default_prom-stage.conf
+    dest: /etc/nginx/conf.d
+
+# Перечитываем конфиг nginx
+- name: Update Front | Reload nginx
+  service:
+    name: nginx
+    state: reloaded

@@ -1,0 +1,69 @@
+---
+
+# Отключаем мониторинг.
+- name: Prometheus | Derigester consul
+  uri:
+    url: "http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/deregister/{{ inventory_hostname }}_{{ deploy_name_2 }}"
+    method: PUT
+
+# Останавливаем контейнер.
+- name: Docker Update | Stop a container 2
+  docker_container:
+    name: "{{ deploy_name_2 }}"
+    state: stopped
+    timeout: 600
+  ignore_errors: yes
+
+# Удаляем контейнер.
+- name: Docker Update | Delete a container 2
+  docker_container:
+    name: "{{ deploy_name_2 }}"
+    state: absent
+    timeout: 600
+  ignore_errors: yes
+
+# Создаём файл с переменными
+- name: Docker Env | Configure env file 2
+  template:
+    src: "env2.j2"
+    dest: "{{ app_dir }}/.env2"
+
+# Создаём контейнер заново.
+- name: Docker Update | Update a container 2
+  docker_container:
+    name: "{{ deploy_name_2 }}"
+    image: "{{ deploy_image }}"
+    ports: "{{ deploy_ports_2 }}"
+    exposed_ports: "{{ deploy_exposed_ports }}"
+    volumes: "{{ deploy_volumes_2 }}"
+    env_file: "{{ app_dir }}/.env2"
+    etc_hosts: >
+      {
+        "{{ elk_host_name }}": "{{ elk_host_ip }}"
+      }
+    restart_policy: always
+    state: started
+    timeout: 600
+
+# Проверка имени приложения.
+- name: Prometheus | Ufos check
+  set_fact:
+    ufos: "{{'true' if deploy_name_2 | regex_search('ufos') else 'false'}}"
+
+# Включаем мониторинг java health_check.
+- name: Prometheus | Register consul health_check
+  uri:
+    url: http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+    method: PUT
+    body: {"id":"{{ inventory_hostname }}_{{ deploy_name_2 }}","name":"health_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port_2 }}/actuator/health","tags":["ufos_check","{{ var_env }}"]}
+    body_format: json
+  when: ufos == "false"
+
+# Включаем мониторинг UFOS check regex.
+- name: Prometheus | Register consul UFOS check
+  uri:
+    url: http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+    method: PUT
+    body: {"id":"{{ inventory_hostname }}_{{ deploy_name_2 }}","name":"ufos_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port_2 }}/actuator/health","tags":["ufos_check","{{ var_env }}"]}
+    body_format: json
+  when: ufos == "true"

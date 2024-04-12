@@ -1,0 +1,80 @@
+---
+
+- include: docker-images.yml
+  tags:
+    - first
+    - second
+    - thrid
+    - fourth
+    - fifth
+    - ufos
+    - front
+    - proxy
+    - fias
+    - sixth
+    - express
+    - express_second
+    - golang
+
+# Если изображение обновилось, то выполняем обновление контейнера.
+- include: docker-update-first.yml
+  tags:
+    - first
+    - front
+    - fias
+
+- include: docker-update-second.yml
+  tags:
+    - second
+    - ufos
+
+- include: docker-update-thrid.yml
+  tags:
+    - thrid
+
+- include: docker-update-fourth.yml
+  tags:
+    - fourth
+
+- include: docker-update-fifth.yml
+  tags:
+    - fifth
+
+- include: docker-update-sixth.yml
+  tags:
+    - sixth
+
+- include: docker-update-proxy.yml
+  tags:
+    - proxy
+
+- include: update_spark.yml
+  tags:
+    - spark
+
+- include: docker-update-express.yml
+  tags:
+    - express
+
+- include: docker-update-express-second.yml
+  tags:
+    - express_second
+
+- include: docker-update-go.yml
+  tags:
+    - golang
+
+- include: docker-prune.yml
+  tags:
+    - first
+    - second
+    - thrid
+    - fourth
+    - ufos
+    - front
+    - proxy
+    - fias
+    - sixth
+    - express
+    - express_second
+    - golang

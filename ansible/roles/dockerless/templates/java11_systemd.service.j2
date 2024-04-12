@@ -1,0 +1,22 @@
+[Unit]
+Description={{ artifacts_name }}
+
+[Service]
+EnvironmentFile=/etc/systemd/system/{{ artifacts_name }}.env
+WorkingDirectory={{ app_dir }}
+{% if inventory_hostname in groups['ufos'] %}
+ExecStart=/usr/bin/java11 {{ java_jmx_conf }} {% if '_bos' not in artifacts_name %}{{ spring_app_name | default('') }}{% endif %} -jar {{ artifacts_name }}.jar
+{% else %}
+ExecStart=/usr/bin/java {{ java_jmx_conf }} {{ spring_app_name | default('') }} -jar {{ artifacts_name }}.jar
+{% endif %}
+ExecStartPost=/usr/bin/curl -X PUT -d '{"id":"{{ inventory_hostname }}_{{ artifacts_name }}","name":"health_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port }}/actuator/health","tags":["health_check","{{ var_env }}"]}' http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+ExecStop=/usr/bin/curl --request PUT http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/deregister/{{ inventory_hostname }}_{{ artifacts_name }}
+User={{ app_user }}
+Type=simple
+Restart=on-failure
+RestartSec=10
+LimitNPROC=16384
+LimitNOFILE=262144
+
+[Install]
+WantedBy=multi-user.target

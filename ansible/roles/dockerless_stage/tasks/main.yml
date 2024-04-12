@@ -1,0 +1,37 @@
+---
+
+- include: update_java11_first.yml
+  tags:
+    - first
+    - fias
+- include: update_java11_second.yml
+  tags:
+    - second
+- include: update_java11_third.yml
+  tags:
+    - thrid
+- include: update_java11_fourth.yml
+  tags:
+    - fourth
+- include: update_java11_fifth.yml
+  tags:
+    - fifth
+- include: update_java11_sixth.yml
+  tags:
+    - sixth
+- include: update_java8.yml
+  tags:
+    - ufos
+- include: update_front.yml
+  tags:
+    - front
+- include: proxy_configure.yml
+  tags:
+    - proxy
+- include: update_spark.yml
+  tags:
+    - spark
+
+- include: update_nifi.yml
+  tags:
+    - nifi

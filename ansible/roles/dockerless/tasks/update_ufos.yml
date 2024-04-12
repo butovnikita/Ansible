@@ -1,0 +1,161 @@
+---
+
+# Ищем сервис
+- name: Update Java 8 | Find service
+  stat:
+    path: "/etc/systemd/system/{{ artifacts_name_2 }}.service"
+  register: service_exists
+
+# Останавливаем сервис явы
+- name: Update Java 8 | Stop java 8 unit
+  systemd:
+    name: "{{ artifacts_name_2 }}"
+    enabled: yes
+    state: stopped
+  when: service_exists.stat.exists
+
+# Создаем сервис
+- name: Update Java 8 | Copy unit first
+  template:
+    src: "java8_systemd.service.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_2 }}.service"
+  when: artifacts_name_2 is defined
+
+# Копируем env файл
+- name: Update Java 8 | Copy env app file
+  template:
+    src: "java8_systemd.env.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name_2 }}.env"
+
+# Создаем пользователя UFOS
+- name: Update Java 8 | Create UFOS group
+  group:
+    name: "{{ ufos_user }}"
+    state: present
+    gid: 1300
+
+- name: Update Java 8 | Create UFOS user
+  user:
+    name: "{{ ufos_user }}"
+    comment: UFOS user
+    uid: 1300
+    group: "{{ ufos_user }}"
+
+# Чистим рабочую директорию
+- name: Update Java 8 | Clean ufos dir
+  file:
+    state: "{{ item }}"
+    path: "{{ ufos_app_dir }}"
+    owner: "{{ ufos_user }}"
+    group: "{{ ufos_user }}"
+    mode: "755"
+  with_items:
+    - absent
+    - directory
+
+# Архивируем артефакты
+- archive:
+    path: "{{ path_to_artifacts }}/jetty/"
+    dest: "/artifacts.tgz"
+  delegate_to: localhost
+
+# Копируем архив артефактов
+- name: Update Java 8 | Copy new artifact
+  copy:
+    src: "/artifacts.tgz"
+    dest: "{{ ufos_app_dir }}/artifacts.tgz"
+    force: true
+
+# Разархивируем артефакты
+- name: Update Java 8 | Unarchived
+  unarchive:
+    src: "{{ ufos_app_dir }}/artifacts.tgz"
+    dest: "{{ ufos_app_dir }}"
+    remote_src: yes
+    owner: "{{ ufos_user }}"
+    group: "{{ ufos_user }}"
+
+# Удаляем архив
+- name: Update Java 8 | Delete source dir
+  file:
+    path: "{{ ufos_app_dir }}/artifacts.tgz"
+    state: absent
+
+# Меняем порт для приложения
+- name: Update Java 8 | Edited config
+  lineinfile:
+    path: "{{ ufos_app_dir }}/etc/jetty.properties"
+    state: present
+    regexp: '^sufd\.bind\.port'
+    line: "sufd.bind.port={{ env_port_2 }}"
+
+# Настраиваем кластер
+- name: Update Java 8 | Copy hazelcast.xml
+  template:
+    src: "ufos_hazelcast.xml.j2"
+    dest: "{{ ufos_app_dir }}/etc/hazelcast.xml"
+
+- name: Update Java 8 | Enable hazelcast
+  lineinfile:
+    path: "{{ ufos_app_dir }}/sufd.sh"
+    state: present
+    insertafter: "^-Dlogback.configurationFile"
+    line: '        -Dhazelcast.config=$JETTY_HOME/etc/hazelcast.xml \ '
+
+# Чистим nfs
+- name: Update Java 8 | Clean nfs dir
+  file:
+    state: "{{ item }}"
+    path: "/usr/share/nfs_share/jetty"
+    owner: "{{ ufos_user }}"
+    group: "{{ ufos_user }}"
+    mode: "755"
+  with_items:
+    - absent
+    - directory
+  when: "'reg-app-01' in inventory_hostname or 'reg-app-11' in inventory_hostname"
+
+# Копируем УФОС
+- name: Update Java 8 | Copy UFOS on nfs
+  copy:
+    src: "{{ ufos_app_dir }}"
+    dest: "/usr/share/nfs_share"
+    remote_src: yes
+    owner: "{{ ufos_user }}"
+    group: "{{ ufos_user }}"
+  when: "'reg-app-01' in inventory_hostname or 'reg-app-11' in inventory_hostname"
+
+# Убираем директории для линков на nfs
+- name: Update Java 11 | Del dirs for nfs
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ ufos_app_dir }}/etc"
+    - "{{ ufos_app_dir }}/lib"
+    - "{{ ufos_app_dir }}/sql-migrations"
+    - "{{ ufos_app_dir }}/sufd.config"
+  when: "'reg-app' in inventory_hostname"
+
+# Создаем ссылки на nfs
+- name: Update Java 11 | Create symbolic link
+  file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ ufos_user }}"
+    group: "{{ ufos_user }}"
+    state: link
+  with_items:
+    - {src: '/usr/share/nfs_share/jetty/etc', dest: '{{ ufos_app_dir }}/etc'}
+    - {src: '/usr/share/nfs_share/jetty/lib', dest: '{{ ufos_app_dir }}/lib'}
+    - {src: '/usr/share/nfs_share/jetty/sql-migrations', dest: '{{ ufos_app_dir }}/sql-migrations'}
+    - {src: '/usr/share/nfs_share/jetty/sufd.config', dest: '{{ ufos_app_dir }}/sufd.config'}
+  when: "'reg-app' in inventory_hostname"
+
+# Запускаем сервис
+- name: Update Java 8 | Start java 8 unit
+  systemd:
+    name: "{{ artifacts_name_2 }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes

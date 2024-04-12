@@ -1,0 +1,53 @@
+{% if inventory_hostname not in groups['app_elk'] %}
+APP_SERVER={{ ansible_default_ipv4.address }}
+APP_PORT={{ env_port_2 }}
+CONSUL_HOST={{ consul_host }}
+CONSUL_PORT={{ consul_port }}
+UFOS_LOGIN={{ ufos_login }}
+UFOS_PASSWORD={{ ufos_password }}
+REG_UFOS={{ ufos_reg }}
+ASSIGN_UFOS={{ ufos_assign }}
+NSI_UFOS={{ ufos_nsi }}
+CONSTRUCTOR_URL={{ constructor_url }}
+{% endif %}
+{% if inventory_hostname in groups['ufos']%}
+DB_UFOS_HOST_PROP={{ db_ufos_host_prop }}
+DB_UFOS_USER={{ db_login }}
+DB_UFOS_PASS={{ db_password }}
+KAFKA_SERVER={{ kafka_server }}:{{ kafka_port }}
+KAFKA_TOPIC={{ kafka_topic }}
+JAVA_TOOL_OPTIONS=-Dcom.sun.management.jmxremote -Djava.rmi.server.hostname={{ ansible_default_ipv4.address }} -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.port=17002 -Dcom.sun.management.jmxremote.rmi.port=17002 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+{% endif %}
+{% if 'int-spark' in inventory_hostname %}
+APP_SERVER={{ ansible_default_ipv4.address }}
+APP_PORT={{ env_port_2 }}
+CONSUL_HOST={{ consul_host }}
+CONSUL_PORT={{ consul_port }}
+UFOS_LOGIN={{ ufos_login }}
+UFOS_PASSWORD={{ ufos_password }}
+REG_UFOS={{ ufos_reg }}
+ASSIGN_UFOS={{ ufos_assign }}
+NSI_UFOS={{ ufos_nsi }}
+KAFKA_SERVER={{ kafka_server }}:{{ kafka_port }}
+REDIS_HOST={{ redis_host }}
+REDIS_PORT={{ redis_port }}
+REDIS_LOGIN={{ redis_login }}
+REDIS_PASSWORD={{ redis_password }}
+REDIS_TOPIC={{ redis_topic }}
+{% endif %}
+{% if 'int-docs-es-app' in inventory_hostname %}
+JAVA_TOOL_OPTIONS=-Dcom.sun.management.jmxremote -Djava.rmi.server.hostname={{ ansible_default_ipv4.address }} -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.port=17002 -Dcom.sun.management.jmxremote.rmi.port=17002 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+{% endif %}
+{% if inventory_hostname in groups['personals'] %}
+SPRING_DATASOURCE_URL=jdbc:postgresql://{{ psql_name_2 }}:5432/{{ psql_db_name_2 }}
+SPRING_DATASOURCE_USERNAME={{ psql_db_user_2 }}
+SPRING_DATASOURCE_PASSWORD={{ psql_db_pass_2 }}
+SPRING_FLYWAY_URL=jdbc:postgresql://{{ psql_name_2 }}:5432/{{ psql_db_name_fw_2 }}
+SPRING_FLYWAY_USER={{ psql_db_user_fw_2}}
+SPRING_FLYWAY_PASSWORD={{ psql_db_pass_fw_2 }}
+SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+KAFKA_SERVER={{ kafka_server }}:{{ kafka_port}}
+ACCRUAL_KAFKA_TOPIC={{ accrual_kafka_topic }}
+JAVA_TOOL_OPTIONS=-Dspring.cloud.consul.discovery.service-name=test-fias -Dcom.sun.management.jmxremote -Djava.rmi.server.hostname={{ ansible_default_ipv4.address }} -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.port=17002 -Dcom.sun.management.jmxremote.rmi.port=17002 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+{% endif %}
+

@@ -1,0 +1,43 @@
+---
+
+- include: update_java11.yml
+  tags:
+    - first
+    - second
+    - thrid
+    - fourth
+    - fifth
+    - fias
+    - sixth
+
+- include: update_ufos.yml
+  tags:
+    - ufos
+
+- include: update_front.yml
+  tags:
+    - front
+
+- include: proxy_configure.yml
+  tags:
+    - proxy
+
+- include: update_spark.yml
+  tags:
+    - spark
+
+- include: update_nifi.yml
+  tags:
+    - nifi
+
+- include: update_express.yml
+  tags:
+    - express
+
+- include: update_express_second.yml
+  tags:
+    - express_second
+
+- include: update_go.yml
+  tags:
+    - golang

@@ -1,0 +1,17 @@
+[Unit]
+Description={{ artifacts_name }}
+After=syslog.target
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/systemd/system/{{ artifacts_name }}.env
+WorkingDirectory={{ app_dir }}/{{ artifacts_name }}
+ExecStart={{ app_dir }}/{{ artifacts_name }}/elk-configuration-provider_linux_amd64
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{ artifacts_name }}
+User={{ app_user }}
+
+[Install]
+WantedBy=multi-user.target

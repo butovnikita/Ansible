@@ -1,0 +1,28 @@
+modules:
+  health_check:
+    prober: http
+    http:
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp:
+        - "UP"
+      preferred_ip_protocol: "ip4" # defaults to "ip6"
+  ufos_check:
+    prober: http
+    http:
+      valid_status_codes: [200]
+      fail_if_body_not_matches_regexp:
+        - "Веб-клиент"
+      preferred_ip_protocol: "ip4" # defaults to "ip6"
+  http_200:
+    prober: http
+    http:
+      valid_status_codes: [200]
+      preferred_ip_protocol: "ip4" # defaults to "ip6"
+  ssh_banner:
+    prober: tcp
+    tcp:
+      query_response:
+      - expect: "^SSH-2.0-"
+      - send: "SSH-2.0-blackbox-ssh-check"
+  icmp:
+    prober: icmp

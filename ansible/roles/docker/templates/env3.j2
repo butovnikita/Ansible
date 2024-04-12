@@ -1,0 +1,20 @@
+{% if 'int-assign-app' in inventory_hostname %}
+APP_SERVER={{ ansible_default_ipv4.address }}
+APP_PORT={{ env_port_3 }}
+CONSUL_HOST={{ consul_host }}
+CONSUL_PORT={{ consul_port }}
+UFOS_LOGIN={{ ufos_login }}
+UFOS_PASSWORD={{ ufos_password }}
+REG_UFOS={{ ufos_reg }}
+ASSIGN_UFOS={{ ufos_assign }}
+NSI_UFOS={{ ufos_nsi }}
+KAFKA_SERVER={{ kafka_server }}:{{ kafka_port }}
+REDIS_HOST={{ redis_host }}
+REDIS_PORT={{ redis_port }}
+REDIS_LOGIN={{ redis_login }}
+REDIS_PASSWORD={{ redis_password }}
+REDIS_TOPIC={{ redis_topic }}
+JAVA_TOOL_OPTIONS=-Xmx3072m -XX:+UseParallelGC -XX:+UseParallelOldGC -XX:+AggressiveOpts -XX:+DisableExplicitGC -Dcom.sun.management.jmxremote -Djava.rmi.server.hostname={{ ansible_default_ipv4.address }} -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.port=17003 -Dcom.sun.management.jmxremote.rmi.port=17003 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+OPENTRACING_JAEGER_UDP-SENDER_HOST=localhost
+OPENTRACING_JAEGER_UDP-SENDER_PORT=6831
+{% endif %}

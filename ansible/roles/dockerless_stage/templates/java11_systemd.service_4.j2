@@ -1,0 +1,14 @@
+[Unit]
+Description={{ artifacts_name_4 }}
+
+[Service]
+EnvironmentFile=/etc/systemd/system/{{ artifacts_name_4 }}.env
+WorkingDirectory={{ app_dir }}
+ExecStart={{ java11_inst_dir }}/bin/java -jar {{ app_dir }}/{{ artifacts_name_4 }}.jar
+User=root
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

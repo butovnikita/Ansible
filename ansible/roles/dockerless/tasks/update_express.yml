@@ -1,0 +1,98 @@
+---
+
+# Создаем пользователя
+- name: Update Express | Create app_user group
+  group:
+    name: "{{ app_user }}"
+    state: present
+
+- name: Update Express | Create app_user
+  user:
+    name: "{{ app_user }}"
+    comment: APP user
+    group: "{{ app_user }}"
+
+# Ищем сервис
+- name: Update Express | Find service
+  stat:
+    path: "/etc/systemd/system/{{ artifacts_name }}.service"
+  register: service_exists
+
+# Останавливаем сервис
+- name: Update Express | Stop unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: stopped
+  when: service_exists.stat.exists
+
+# Создаем сервис
+- name: Update Express | Copy unit
+  template:
+    src: "express_systemd.service.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.service"
+  when: artifacts_name is defined
+
+# Удаляем старый артефакт и создаем рабочую директорию
+- name: Update Express | Create app_dir
+  file:
+    path: "{{ app_dir }}/{{ artifacts_name }}"
+    state: "{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "755"
+  with_items:
+    - absent
+    - directory
+
+# Копируем env файл
+- name: Update Express | Copy env app file first
+  template:
+    src: "express_systemd.env.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.env"
+  when: artifacts_name is defined
+
+# Архивируем артефакты
+- name: Update Express | Create artifacts .tar
+  shell: "tar -cvf /artifacts.tar ../dist"
+  args:
+    chdir: "{{ path_to_artifacts }}"
+  delegate_to: localhost
+
+# Копируем архив артефактов
+- name: Update Express | Copy new artifact
+  copy:
+    src: "/artifacts.tar"
+    dest: "/tmp"
+    force: true
+
+# Разархивируем артефакты
+- name: Update Express | Extract artifacts
+  unarchive:
+    src: "/tmp/artifacts.tar"
+    dest: "/tmp"
+    remote_src: yes
+
+# Копируем новые файлы
+- name: Update Express | Copy new files
+  copy:
+    src: "/tmp/dist/"
+    dest: "{{ app_dir }}/{{ artifacts_name }}/dist"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "755"
+    remote_src: yes
+
+# Удаляем временные файлы
+- name: Update Express | Delete tmp
+  file:
+    path: "/tmp/dist/"
+    state: absent
+
+# Запускаем сервис
+- name: Update Express | Start Express unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes

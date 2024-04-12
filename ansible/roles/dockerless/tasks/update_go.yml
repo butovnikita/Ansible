@@ -1,0 +1,80 @@
+---
+
+# Создаем пользователя
+- name: Update GO | Create app_user group
+  group:
+    name: "{{ app_user }}"
+    state: present
+
+- name: Update GO | Create app_user
+  user:
+    name: "{{ app_user }}"
+    comment: APP user
+    group: "{{ app_user }}"
+
+# Ищем сервис
+- name: Update GO | Find service
+  stat:
+    path: "/etc/systemd/system/{{ artifacts_name }}.service"
+  register: service_exists
+
+# Останавливаем сервис
+- name: Update GO | Stop unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: stopped
+  when: service_exists.stat.exists
+
+# Создаем сервис
+- name: Update GO | Copy unit
+  template:
+    src: "go_systemd.service.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.service"
+  when: artifacts_name is defined
+
+# Удаляем старый артефакт и создаем рабочую директорию
+- name: Update GO | Create app_dir
+  file:
+    path: "{{ app_dir }}/{{ artifacts_name }}"
+    state: "{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "755"
+  with_items:
+    - absent
+    - directory
+
+# Копируем env файл
+- name: Update GO | Copy env app file first
+  template:
+    src: "go_systemd.env.j2"
+    dest: "/etc/systemd/system/{{ artifacts_name }}.env"
+  when: artifacts_name is defined
+
+# Получаем имя нашего артефакта
+- name: Update GO | Get a list of file
+  shell: "ls"
+  args:
+    chdir: "{{ path_to_artifacts }}"
+  changed_when: false
+  register: results
+  delegate_to: localhost
+
+# Копируем новый артефакт
+- name: Update GO | Copy new artifact
+  copy:
+    src: "{{ path_to_artifacts }}/{{ item }}"
+    dest: "{{ app_dir }}/{{ artifacts_name }}/{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "775"
+  with_items: "{{ results.stdout_lines }}"
+
+# Запускаем сервис
+- name: Update GO | Start GO unit
+  systemd:
+    name: "{{ artifacts_name }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes

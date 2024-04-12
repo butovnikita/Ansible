@@ -1,0 +1,54 @@
+---
+
+# Отключаем мониторинг.
+- name: Prometheus | Derigester consul
+  uri:
+    url: "http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/deregister/{{ inventory_hostname }}_{{ deploy_name_4 }}"
+    method: PUT
+
+# Останавливаем контейнер.
+- name: Docker Update | Stop a container 4
+  docker_container:
+    name: "{{ deploy_name_4 }}"
+    state: stopped
+    timeout: 600
+  ignore_errors: yes
+
+# Удаляем контейнер.
+- name: Docker Update | Delete a container 4
+  docker_container:
+    name: "{{ deploy_name_4 }}"
+    state: absent
+    timeout: 600
+  ignore_errors: yes
+
+# Создаём файл с переменными
+- name: Docker Env | Configure env file 4
+  template:
+    src: "env4.j2"
+    dest: "{{ app_dir }}/.env4"
+
+# Создаём контейнер заново.
+- name: Docker Update | Update a container 4
+  docker_container:
+    name: "{{ deploy_name_4 }}"
+    image: "{{ deploy_image }}"
+    ports: "{{ deploy_ports_4 }}"
+    exposed_ports: "{{ deploy_exposed_ports }}"
+    volumes: "{{ deploy_volumes_4 }}"
+    env_file: "{{ app_dir }}/.env4"
+    etc_hosts: >
+      {
+        "{{ elk_host_name }}": "{{ elk_host_ip }}"
+      }
+    restart_policy: always
+    state: started
+    timeout: 600
+
+# Включаем мониторинг.
+- name: Prometheus | Register consul
+  uri:
+    url: http://{{ consul_vmagent }}:{{ consul_port }}/v1/agent/service/register
+    method: PUT
+    body: {"id":"{{ inventory_hostname }}_{{ deploy_name_4 }}","name":"health_check","address":"{{ ansible_hostname }}.otr.ru:{{ env_port_4 }}/actuator/health","tags":["health_check","{{ var_env }}"]}
+    body_format: json

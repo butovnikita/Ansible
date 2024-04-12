@@ -1,0 +1,7 @@
+{% if inventory_hostname not in groups['app_elk'] %}
+CONSUL_PORT={{ consul_port }}
+CONSUL_HOST={{ consul_host }}
+APP_SERVER={{ ansible_default_ipv4.address }}
+APP_PORT={{ env_port }}
+JAVA_TOOL_OPTIONS=-Dcom.sun.management.jmxremote -Djava.rmi.server.hostname={{ ansible_default_ipv4.address }} -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.port=17001 -Dcom.sun.management.jmxremote.rmi.port=17001 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+{% endif %}

@@ -1,0 +1,171 @@
+---
+
+#################################################################################
+##
+##  Остановить NiFi.
+##
+##  Сначала выполняется остановка всех процессоров в NiFi на первом узле,
+##  а затем останавливается сам сервис.
+##
+##  TODO: Нужна проверка или пауза, что все процессоры остановилсь.
+##
+#################################################################################
+
+- name: Update Nifi | Stop NiFi Processors
+  shell: >
+    GROUP_ID=$(curl -s {{ nifi_url }}/nifi-api/flow/process-groups/root/status | jq -r '.processGroupStatus.id') || true
+
+    echo $GROUP_ID
+
+    RESULT=$(curl -s -X PUT -H 'Content-Type: application/json' -d '{"id":"'${GROUP_ID}'","state":"STOPPED","disconnectedNodeAcknowledged":false}' {{ nifi_url }}/nifi-api/flow/process-groups/${GROUP_ID}) || true
+
+    echo $RESULT
+  when: is_primary_node == "true"
+  delegate_to: 127.0.0.1
+
+- name: Update Nifi | Stop NiFi
+  service:
+    name: nifi
+    state: stopped
+
+#################################################################################
+##
+##  Обновить артефакты АКИ/СКИ/AURA.
+##  - файл nifi-puv-integration-nar-*.nar,
+##
+#################################################################################
+
+- name: Update Nifi | Find old nar files
+  find:
+    paths: "{{ nifi_role_root_dir }}/nifi-current/lib/"
+    patterns: "nifi-puv-integration-nar-*.nar"
+  register: find_results
+
+- name: Update NiFi | Delete old nar files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ find_results.files }}"
+
+- name: Update NiFi | Copy new nar files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ nifi_role_root_dir }}/nifi-current/lib/"
+    owner: nifi
+    group: nifi
+  with_fileglob:
+    - "{{ path_to_artifacts }}/nifi-puv-integration-nar-*.nar"
+
+#################################################################################
+##
+##  (ТОЛЬКО НА ПЕРВОМ УЗЛЕ - НА КОТОРОМ REGISTRY).
+##
+##  Обновить скрипты инициализации NiFi Flow.
+##
+##  Берутся из репозитория int-integr/puv-flows/ и записываются в $host/nifi/puv-integration-flows/.
+##
+#################################################################################
+
+- name: Update NiFi | Delete old puv-integration-flows dir
+  file:
+    state: absent
+    path: "{{ nifi_role_root_dir }}/puv-integration-flows/"
+  when: is_primary_node == "true"
+
+- name: Update NiFi | Create new puv-integration-flows dir
+  file:
+    state: directory
+    path: "{{ nifi_role_root_dir }}/puv-integration-flows/"
+    owner: nifi
+    group: nifi
+  when: is_primary_node == "true"
+
+- name: Update Nifi | Copy puv-integration-flows files
+  copy:
+    src: "/builds/puv/int-integr/nifi-flows/"
+    dest: "{{ nifi_role_root_dir }}/puv-integration-flows/"
+    owner: nifi
+    group: nifi
+  when: is_primary_node == "true"
+
+#################################################################################
+##
+##  (ТОЛЬКО НА ПЕРВОМ УЗЛЕ - НА КОТОРОМ REGISTRY).
+##
+##  Установить права на выполнение скриптов инициализации NiFi Flow.
+##
+#################################################################################
+
+- name: Update Nifi | Find *.sh && *.py in puv-integration-flows/*
+  find:
+    paths: "{{ nifi_role_root_dir }}/puv-integration-flows/"
+    patterns: "*.sh,*.py"
+  register: executables_find_results
+  when: is_primary_node == "true"
+
+- name: Update NiFi | Set executable permissions for *.sh && *.py in puv-integration-flows/*
+  file:
+    path: "{{ item.path }}"
+    state: file
+    owner: nifi
+    group: nifi
+    mode: a+x
+  with_items: "{{ executables_find_results.files }}"
+  when: is_primary_node == "true"
+
+#################################################################################
+##
+##  Запустить NiFi.
+##
+##  И поставить паузу на 7 минут для ожидания окончания выборов (роли PRIMARY, COORDINATOR).
+##  TODO: Пауза должна быть только для кластерного NiFi.
+##
+##  7 минут: nifi.cluster.flow.election.max.wait.time(5 mins) + время на первичный запуск.
+##           С NiFi не получится взаимодействовать, пока не закончится nifi.cluster.flow.election.max.wait.time
+##           - т.к кластер еще не успел собраться и определиться с ролями.
+##
+##           TODO: Исправить "магию" с дополнительными двумя минутами можно отправкой запросов к REST-API.
+##                 Например: nifi:8080/nifi-api/flow/cluster/summary - возвращает кол-во подключенных нод.
+##                 Либо любой другой доступный способ определения, что NiFi полностью запустился.
+##
+##           Это нужно перед запуском init_nifi.sh. В ином случае скрипт завершится ошибкой,
+##           так как не сможет достучаться до NiFi.
+##
+##################################################################################
+
+- name: Update NiFi | Start NiFi
+  service:
+    name: nifi
+    state: started
+
+- name: Update NiFi | Waiting for election to complete
+  pause:
+    minutes: 7
+  # when: nifi_type == "async"
+
+##################################################################################
+##
+##  (ТОЛЬКО НА ПЕРВОМ УЗЛЕ - НА КОТОРОМ REGISTRY).
+##
+##  Запустить инициализацию NiFi Flow.
+##
+##  За это отвечает скрипт init_nifi.sh из репозитория int-integr/nifi-flows/.
+##  Для своей работы требует python-3.6.8.
+##
+##################################################################################
+
+- name: Misc | Script for init nifi
+  become: true
+  become_user: nifi
+  shell: >
+    export LANGUAGE="en_US.UTF-8"
+    export LC_ALL="en_US.UTF-8"
+    export PYTHONIOENCODING="UTF-8"
+
+    export JAVA_HOME="/usr/java/jdk-11.0.2"
+
+    {{ nifi_role_root_dir }}/puv-integration-flows/init_nifi.sh -t {{ nifi_role_root_dir }}/nifi-toolkit-current/ \
+                                         --nifi-env {{ nifi_role_root_dir }}/nifi.env \
+                                         --nifi-url {{ nifi_url }} \
+                                         --registry-url {{ nifi_registry_url }} {{ nifi_init_nifi_sh_args | default('') }}
+  when: is_primary_node == "true"

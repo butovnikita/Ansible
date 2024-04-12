@@ -1,0 +1,6 @@
+---
+
+- hosts: kesl
+  become: true
+  roles:
+    - kesl
